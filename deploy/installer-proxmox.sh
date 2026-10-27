@@ -32,7 +32,7 @@ DISQUE="${DISQUE:-4}"
 UTILISATEUR_PVE="cadastre@pve"
 
 gras=$'\e[1m'; vert=$'\e[32m'; rouge=$'\e[31m'; normal=$'\e[0m'
-etape() { echo "${gras}→ $*${normal}"; }
+etape() { echo "${gras}→ $*${normal}" >&2; }
 fin() { echo "${rouge}✗ $*${normal}" >&2; exit 1; }
 
 [[ $EUID -eq 0 ]] || fin "à lancer en root sur l'hôte Proxmox"
