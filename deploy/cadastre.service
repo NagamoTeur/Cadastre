@@ -1,0 +1,22 @@
+[Unit]
+Description=Cadastre, la carte des services du homelab
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=cadastre
+Group=cadastre
+WorkingDirectory=/opt/cadastre
+Environment=CADASTRE_ENV=/etc/cadastre/cadastre.env
+Environment=CADASTRE_DONNEES=/var/lib/cadastre
+ExecStart=/usr/bin/node server/index.mjs
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/cadastre
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

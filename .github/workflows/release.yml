@@ -1,0 +1,38 @@
+# A v* tag builds the archive (code + node_modules) and publishes it as a release.
+# deploy/installer-proxmox.sh downloads the latest one.
+name: Release
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund && npm run check
+      - name: Archive
+        run: deploy/paquet.sh "$GITHUB_REF_NAME"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<NOTES
+          Install on a Proxmox VE host, as root:
+
+          \`\`\`bash
+          bash -c "\$(curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/deploy/installer-proxmox.sh)"
+          \`\`\`
+
+          Update an existing install: same command followed by \`-- --mise-a-jour <CTID>\`.
+          NOTES
+          gh release create "$GITHUB_REF_NAME" "dist/cadastre-${GITHUB_REF_NAME#v}.tar.gz" \
+            --title "Cadastre $GITHUB_REF_NAME" --notes-file notes.md

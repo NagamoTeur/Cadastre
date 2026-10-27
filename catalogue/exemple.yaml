@@ -1,0 +1,54 @@
+# Exemple de catalogue du Cadastre. Tout y est facultatif.
+#
+# Sans catalogue, la carte se dessine seule : machines du Proxmox, services
+# reconnus sur leurs ports, routes de Traefik. Le catalogue sert à dire ce que
+# la découverte ne peut pas deviner : à quoi sert vraiment une machine, et qui
+# parle à qui. Copiez ce fichier en /etc/cadastre/catalogue.yaml sur le CT du
+# Cadastre et modifiez-le : il est relu dès qu'il change.
+#
+# Astuce : la fiche d'une machine découverte propose un bout de YAML prêt à
+# coller ici (« Décrire dans le catalogue »).
+
+# L'hôte Proxmox (le premier nœud du cluster).
+hote:
+  description: >
+    Le serveur de la maison.
+
+# Quartiers en plus de ceux par défaut (reseau, dev, veille, stockage, donnees,
+# medias, domotique, jeux, apps, ia, autres, dehors). Un id existant renomme ou
+# recolore le quartier.
+groupes:
+  - { id: famille, nom: La famille, couleur: "#e87fa8" }
+
+noeuds:
+  # Une machine du Proxmox : rattachée par son vmid.
+  - id: nextcloud
+    vmid: 110
+    nom: Nextcloud
+    groupe: stockage
+    role: Les fichiers de la famille
+    description: >
+      Photos et documents partagés, sauvegardés chaque nuit sur le NAS.
+    ports:                       # sondés toutes les 30 s, en plus de ceux découverts
+      - { port: 443, nom: https }
+    domaines: [cloud.example.org]
+    liens:
+      - { titre: Nextcloud, url: "https://cloud.example.org" }
+    depot: moi/nextcloud-config  # préfixé par CADASTRE_DEPOT_BASE
+    ssh: ssh nextcloud           # commande affichée dans la fiche
+    notes:
+      - Mise à jour majeure à faire à la main.
+
+  # Hors du Proxmox : pas de vmid.
+  - id: nas
+    nom: NAS
+    groupe: dehors
+    role: Stockage et sauvegardes
+    ip: 192.168.1.20
+    ports:
+      - { port: 445, nom: smb }
+
+# Liens que rien ne révèle. Les routes de Traefik sont trouvées seules.
+# Types : public, route, deploie, ci, surveille, notifie, utilise, pilote, dns, distant.
+liens:
+  - { de: nextcloud, vers: nas, type: utilise, label: sauvegarde de nuit }

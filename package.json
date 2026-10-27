@@ -1,0 +1,25 @@
+{
+  "name": "cadastre",
+  "version": "0.2.1",
+  "private": true,
+  "description": "A self-drawing map of the services on a Proxmox VE host: roles, links, live state, anomalies.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.mjs",
+    "check": "node --test test/",
+    "paquet": "deploy/paquet.sh"
+  },
+  "dependencies": {
+    "cytoscape": "3.33.1",
+    "yaml": "2.8.1"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NagamoTeur/Cadastre.git"
+  },
+  "homepage": "https://github.com/NagamoTeur/Cadastre"
+}
