@@ -9,7 +9,7 @@
   },
   "scripts": {
     "start": "node server/index.mjs",
-    "check": "node --test test/",
+    "check": "node --test test/*.test.mjs",
     "paquet": "deploy/paquet.sh"
   },
   "dependencies": {
