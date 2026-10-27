@@ -119,6 +119,14 @@ h2 {
 }
 .maj { font: 11px var(--mono); color: var(--texte-3); white-space: nowrap; min-width: 88px; }
 .maj.vieux { color: var(--attention); }
+.langue {
+  padding: 5px 10px;
+  font-size: 12px;
+  background: var(--panneau);
+  border-color: var(--trait);
+  border-radius: 999px;
+  color: var(--texte-2);
+}
 
 /* ── Légende ─────────────────────────────────────────── */
 .legende {
@@ -370,7 +378,8 @@ dl.adresses dd { margin: 0; font-family: var(--mono); font-size: 12px; display: 
 @media (max-width: 760px) {
   .bandeau { gap: 10px; flex-wrap: wrap; left: 16px; right: 16px; }
   .hote, .maj { display: none; }
-  .recherche { width: auto; flex: 1; }
+  .langue { order: 2; margin-left: auto; }
+  .recherche { width: auto; flex: 1 0 100%; order: 3; }
   .legende { display: none; }
   .anomalies { left: 16px; right: 16px; width: auto; max-height: 28vh; }
   .fiche { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 72vh; border-radius: 14px 14px 0 0; }

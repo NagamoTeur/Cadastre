@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="carte" aria-label="Carte des services"></div>
+  <div id="carte" data-i18n-aria="titreCarte"></div>
 
   <header class="bandeau">
     <div class="marque">
@@ -18,37 +18,38 @@
     <div class="hote" id="hote">…</div>
     <label class="recherche">
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      <input id="recherche" type="search" placeholder="Chercher un service, une IP, un domaine…  /" autocomplete="off">
+      <input id="recherche" type="search" data-i18n-placeholder="recherche" autocomplete="off">
     </label>
-    <div class="maj" id="maj" title="Dernière mise à jour"></div>
+    <div class="maj" id="maj"></div>
+    <button class="langue" id="langue" type="button" data-i18n="langue" data-i18n-title="langueAide"></button>
   </header>
 
   <aside class="legende" id="legende">
     <section>
-      <h2>Quartiers</h2>
+      <h2 data-i18n="quartiers"></h2>
       <ul id="groupes"></ul>
     </section>
     <section>
-      <h2>Liens</h2>
+      <h2 data-i18n="liens"></h2>
       <ul id="types"></ul>
     </section>
     <div class="actions">
-      <button id="reorganiser" type="button" title="Range de nouveau chaque service dans sa parcelle">Réorganiser</button>
-      <button id="cadrer" type="button" title="Cadre toute la carte">Tout voir</button>
+      <button id="reorganiser" type="button" data-i18n="reorganiser" data-i18n-title="reorganiserAide"></button>
+      <button id="cadrer" type="button" data-i18n="toutVoir" data-i18n-title="toutVoirAide"></button>
     </div>
-    <button id="redecouvrir" class="redecouvrir" type="button" title="Relance tout de suite le balayage des machines (sinon toutes les 10 min)">Relancer la découverte</button>
+    <button id="redecouvrir" class="redecouvrir" type="button" data-i18n="relancer" data-i18n-title="relancerAide"></button>
   </aside>
 
   <aside class="anomalies" id="anomalies">
     <button class="anomalies-tete" id="anomalies-tete" type="button" aria-expanded="true">
-      <span>Anomalies</span>
+      <span data-i18n="anomalies"></span>
       <span class="compteurs" id="compteurs"></span>
     </button>
     <ol id="anomalies-liste"></ol>
   </aside>
 
   <article class="fiche" id="fiche" hidden>
-    <button class="fermer" id="fermer" type="button" aria-label="Fermer la fiche">×</button>
+    <button class="fermer" id="fermer" type="button" data-i18n-aria="fermerFiche">×</button>
     <div id="fiche-contenu"></div>
   </article>
 

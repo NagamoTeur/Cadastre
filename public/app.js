@@ -1,5 +1,6 @@
 // La carte du Cadastre : Cytoscape dessine, /api/carte nourrit, la fiche raconte.
 /* global cytoscape */
+import { t, langue, basculerLangue, traduirePage } from './i18n.js';
 
 const RAFRAICHIR_MS = 15000;
 const FOND_NOEUD = '#131e2b';
@@ -41,17 +42,18 @@ function ecrireLocal(cle, valeur) {
 
 // ── Mise en forme ───────────────────────────────────────────────
 const go = (o) => (o / 1024 ** 3).toFixed(o >= 10 * 1024 ** 3 ? 0 : 1);
+const GO = t('go');
 function duree(s) {
   if (!s) return '—';
   const j = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  return j ? `${j} j ${h} h` : h ? `${h} h ${m} min` : `${m} min`;
+  return j ? t('dureeJ', { j, h }) : h ? t('dureeH', { h, m }) : t('dureeM', { m });
 }
 function ilYa(ts) {
-  if (!ts) return 'jamais';
+  if (!ts) return t('jamais');
   const s = Math.round((Date.now() - ts) / 1000);
-  return s < 60 ? `il y a ${s} s` : `il y a ${Math.round(s / 60)} min`;
+  return s < 60 ? t('ilYaS', { n: s }) : t('ilYaMin', { n: Math.round(s / 60) });
 }
 
 // ── État d'un nœud : sert à sa bordure et à son halo ─────────────
@@ -67,7 +69,7 @@ function niveauDe(noeud, anomalies) {
 
 function sousTitre(n) {
   if (n.type === 'externe') return n.role ?? '';
-  const id = n.vmid ? `${n.type} ${n.vmid}` : n.type;
+  const id = n.vmid ? `${n.type} ${n.vmid}` : t(n.type === 'hôte' ? 'typeHote' : 'typeRoute');
   return `${id} · ${n.role ?? ''}`;
 }
 
@@ -336,10 +338,10 @@ function enregistrerPositions() {
 async function charger() {
   let carte;
   try {
-    const r = await fetch('api/carte', { cache: 'no-store' });
+    const r = await fetch(`api/carte?lang=${langue}`, { cache: 'no-store' });
     carte = await r.json();
   } catch {
-    $('#maj').textContent = 'serveur injoignable';
+    $('#maj').textContent = t('serveurInjoignable');
     $('#maj').classList.add('vieux');
     return;
   }
@@ -397,14 +399,19 @@ function dessinerBandeau() {
   const invites = etat.carte.noeuds.filter((n) => n.vmid);
   const allumes = invites.filter((n) => n.direct?.statut === 'running').length;
   $('#hote').innerHTML = h
-    ? `<b>PVE ${echapper(h.version?.split('/')[1] ?? '')}</b> · ${allumes}/${invites.length} invités allumés · CPU <b>${Math.round(h.cpu * 100)} %</b> · RAM <b>${go(h.memoire)}/${go(h.memoireMax)} Go</b>`
-    : 'Proxmox : état indisponible';
+    ? `<b>PVE ${echapper(h.version?.split('/')[1] ?? '')}</b> · ${t('invitesAllumes', { allumes, total: invites.length })} · CPU <b>${Math.round(h.cpu * 100)} %</b> · RAM <b>${go(h.memoire)}/${go(h.memoireMax)} ${GO}</b>`
+    : t('proxmoxIndisponible');
   const age = Date.now() - (etat.carte.majPve || etat.carte.genere);
-  $('#maj').textContent = `maj ${ilYa(etat.carte.majPve || etat.carte.genere)}`;
-  $('#maj').title = `Cadastre ${etat.carte.reglages?.version ?? ''} · Proxmox lu ${ilYa(etat.carte.majPve)} · découverte ${etat.carte.decouverteEnCours ? 'en cours' : ilYa(etat.carte.majDecouverte)}${etat.carte.reglages?.proxy ? ` · proxy ${etat.carte.reglages.proxy}` : ''}`;
+  $('#maj').textContent = t('maj', { quand: ilYa(etat.carte.majPve || etat.carte.genere) });
+  $('#maj').title = t('majDetail', {
+    version: etat.carte.reglages?.version ?? '',
+    pve: ilYa(etat.carte.majPve),
+    decouverte: etat.carte.decouverteEnCours ? t('enCours') : ilYa(etat.carte.majDecouverte),
+    proxy: etat.carte.reglages?.proxy,
+  });
   const bouton = $('#redecouvrir');
   bouton.disabled = etat.carte.decouverteEnCours;
-  bouton.textContent = etat.carte.decouverteEnCours ? 'Découverte en cours…' : 'Relancer la découverte';
+  bouton.textContent = etat.carte.decouverteEnCours ? t('decouverteEnCours') : t('relancer');
   $('#maj').classList.toggle('vieux', age > 90000);
 }
 
@@ -459,7 +466,7 @@ $('#reorganiser').addEventListener('click', async () => {
 $('#cadrer').addEventListener('click', () => cadrer(true));
 $('#redecouvrir').addEventListener('click', async () => {
   $('#redecouvrir').disabled = true;
-  $('#redecouvrir').textContent = 'Découverte en cours…';
+  $('#redecouvrir').textContent = t('decouverteEnCours');
   await fetch('api/decouverte', { method: 'POST' }).catch(() => {});
   setTimeout(charger, 4000);
 });
@@ -469,7 +476,7 @@ function dessinerAnomalies() {
   const { anomalies } = etat.carte;
   const nb = (niv) => anomalies.filter((a) => a.niveau === niv).length;
   const compteurs = ['alerte', 'attention', 'info'].filter(nb).map((n) => `<span class="compteur ${n}">${nb(n)}</span>`);
-  $('#compteurs').innerHTML = compteurs.length ? compteurs.join('') : '<span class="compteur calme">tout va bien</span>';
+  $('#compteurs').innerHTML = compteurs.length ? compteurs.join('') : `<span class="compteur calme">${t('toutVaBien')}</span>`;
   $('#anomalies-liste').innerHTML = anomalies
     .map(
       (a) => `<li><button type="button" ${a.noeud ? `data-noeud="${echapper(a.noeud)}"` : 'disabled'}>
@@ -582,7 +589,7 @@ function jauge(nom, part, texte) {
 }
 
 function boutonCopier(texte) {
-  return `<button type="button" class="copier" data-copier="${echapper(texte)}">copier</button>`;
+  return `<button type="button" class="copier" data-copier="${echapper(texte)}">${t('copier')}</button>`;
 }
 
 function commandesDe(n) {
@@ -597,7 +604,7 @@ function lienDepot(depot) {
   if (!depot) return '';
   const base = etat.carte.reglages?.depotBase;
   const url = /^https?:\/\//.test(depot) ? depot : base ? `${base}/${depot}` : null;
-  return url ? `<a href="${echapper(url)}" target="_blank" rel="noopener">Dépôt ${echapper(depot.split('/').pop())}</a>` : '';
+  return url ? `<a href="${echapper(url)}" target="_blank" rel="noopener">${echapper(t('depot', { nom: depot.split('/').pop() }))}</a>` : '';
 }
 
 // Le bout de catalogue qui décrit une machine découverte, prêt à coller.
@@ -608,9 +615,9 @@ function yamlPour(n) {
     `    vmid: ${n.vmid}`,
     `    nom: ${q(n.nom)}`,
     `    groupe: ${n.groupe}`,
-    `    role: ${q(n.role ?? 'À décrire')}`,
+    `    role: ${q(n.role ?? t('aDecrire'))}`,
     '    description: >',
-    `      ${n.notesPve ? n.notesPve.split('\n')[0].slice(0, 120) : 'À quoi sert cette machine ?'}`,
+    `      ${n.notesPve ? n.notesPve.split('\n')[0].slice(0, 120) : t('aQuoiSert')}`,
   ];
   return lignes.join('\n');
 }
@@ -624,9 +631,9 @@ function dessinerFiche(id, { garderDefilement = false } = {}) {
   const nom = (nid) => carte.noeuds.find((x) => x.id === nid)?.nom ?? nid;
   const etiquettes = [`<span class="etiquette groupe">${echapper(g?.nom ?? n.groupe)}</span>`];
   if (n.vmid) etiquettes.push(`<span class="etiquette">${echapper(n.type)} ${n.vmid}</span>`);
-  else if (n.type === 'externe') etiquettes.push('<span class="etiquette">hors Proxmox</span>');
-  if (n.auto) etiquettes.push('<span class="etiquette decouvert" title="Trouvé par la découverte, pas encore décrit au catalogue">découvert</span>');
-  if (d) etiquettes.push(`<span class="etiquette ${d.statut === 'running' ? 'marche' : 'arret'}">${d.statut === 'running' ? 'allumé' : echapper(d.statut)}</span>`);
+  else if (n.type === 'externe') etiquettes.push(`<span class="etiquette">${t('horsProxmox')}</span>`);
+  if (n.auto) etiquettes.push(`<span class="etiquette decouvert" title="${echapper(t('decouvertAide'))}">${t('decouvert')}</span>`);
+  if (d) etiquettes.push(`<span class="etiquette ${d.statut === 'running' ? 'marche' : 'arret'}">${d.statut === 'running' ? t('allume') : echapper(d.statut)}</span>`);
   for (const t of d?.tags ?? []) etiquettes.push(`<span class="etiquette">#${echapper(t)}</span>`);
 
   const blocs = [];
@@ -638,33 +645,33 @@ function dessinerFiche(id, { garderDefilement = false } = {}) {
 
   const siennes = carte.anomalies.filter((a) => a.noeud === n.id);
   if (siennes.length)
-    blocs.push(`<section><h2>À regarder</h2><ul class="anomalies-noeud">${siennes
+    blocs.push(`<section><h2>${t('aRegarder')}</h2><ul class="anomalies-noeud">${siennes
       .map((a) => `<li><span class="point ${a.niveau}"></span><span><b>${echapper(a.titre)}</b><br><span style="color:var(--texte-2)">${echapper(a.detail)}</span></span></li>`)
       .join('')}</ul></section>`);
 
   if (n.description) blocs.push(`<section><p class="description">${echapper(n.description)}</p></section>`);
-  if (n.notesPve) blocs.push(`<section><h2>Notes du Proxmox</h2><p class="notes-pve">${echapper(n.notesPve)}</p></section>`);
+  if (n.notesPve) blocs.push(`<section><h2>${t('notesProxmox')}</h2><p class="notes-pve">${echapper(n.notesPve)}</p></section>`);
 
   if (d && d.statut === 'running') {
-    const jauges = [jauge('CPU', d.cpu, `${(d.cpu * 100).toFixed(1)} %${d.coeurs ? ` · ${d.coeurs} c.` : ''}`)];
-    if (d.memoireMax) jauges.push(jauge('Mémoire', d.memoire / d.memoireMax, `${go(d.memoire)} / ${go(d.memoireMax)} Go`));
+    const jauges = [jauge(t('cpu'), d.cpu, `${(d.cpu * 100).toFixed(1)} %${d.coeurs ? ` · ${t('coeurs', { n: d.coeurs })}` : ''}`)];
+    if (d.memoireMax) jauges.push(jauge(t('memoire'), d.memoire / d.memoireMax, `${go(d.memoire)} / ${go(d.memoireMax)} ${GO}`));
     // Le disque d'une VM n'est pas mesuré par le Proxmox sans agent : on ne montre que la taille.
-    if (d.disqueMax && (d.disque || n.type !== 'VM')) jauges.push(jauge('Disque', d.disque / d.disqueMax, `${go(d.disque)} / ${go(d.disqueMax)} Go`));
-    else if (d.disqueMax) jauges.push(`<div class="jauge"><span>Disque</span><span></span><span class="val">${go(d.disqueMax)} Go alloués</span></div>`);
-    blocs.push(`<section><h2>En direct</h2><div class="jauges">${jauges.join('')}</div>
-      <div class="uptime">allumé depuis ${duree(d.uptime)}${d.charge ? ` · charge ${d.charge.join(' ')}` : ''}</div></section>`);
+    if (d.disqueMax && (d.disque || n.type !== 'VM')) jauges.push(jauge(t('disque'), d.disque / d.disqueMax, `${go(d.disque)} / ${go(d.disqueMax)} ${GO}`));
+    else if (d.disqueMax) jauges.push(`<div class="jauge"><span>${t('disque')}</span><span></span><span class="val">${t('alloues', { n: go(d.disqueMax) })}</span></div>`);
+    blocs.push(`<section><h2>${t('enDirect')}</h2><div class="jauges">${jauges.join('')}</div>
+      <div class="uptime">${t('allumeDepuis', { duree: duree(d.uptime) })}${d.charge ? ` · ${t('charge', { charge: d.charge.join(' ') })}` : ''}</div></section>`);
   }
 
   const adresses = [];
   if (n.ip) adresses.push(`<dt>IP</dt><dd>${echapper(n.ip)} ${boutonCopier(n.ip)}</dd>`);
-  if (n.domaines?.length) adresses.push(`<dt>Public</dt><dd>${n.domaines.map(echapper).join('<br>')}</dd>`);
-  if (adresses.length) blocs.push(`<section><h2>Adresses</h2><dl class="adresses">${adresses.join('')}</dl></section>`);
+  if (n.domaines?.length) adresses.push(`<dt>${t('public')}</dt><dd>${n.domaines.map(echapper).join('<br>')}</dd>`);
+  if (adresses.length) blocs.push(`<section><h2>${t('adresses')}</h2><dl class="adresses">${adresses.join('')}</dl></section>`);
 
   if (n.sondes?.length)
-    blocs.push(`<section><h2>Ports sondés</h2><ul class="ports">${n.sondes
+    blocs.push(`<section><h2>${t('portsSondes')}</h2><ul class="ports">${n.sondes
       .map((s) => {
         const cl = s.ouvert === true ? 'ouvert' : s.ouvert === false ? 'ferme' : '';
-        const ms = s.ouvert ? `${s.ms} ms` : s.ouvert === false ? 'fermé' : 'en attente';
+        const ms = s.ouvert ? `${s.ms} ms` : s.ouvert === false ? t('ferme') : t('enAttente');
         return `<li><span class="etat ${cl}"></span><code>${s.port}</code><span>${echapper(s.nom ?? '')}</span><span class="ms">${ms}</span></li>`;
       })
       .join('')}</ul></section>`);
@@ -673,12 +680,12 @@ function dessinerFiche(id, { garderDefilement = false } = {}) {
   const estTraefik = n.vmid === 101;
   const routes = carte.routes.filter((r) => estTraefik || r.cibles.some((c) => c.noeud === n.id || `orphelin-${c.texte}` === n.id));
   if (routes.length)
-    blocs.push(`<section><h2>${estTraefik ? `Routes servies (${routes.length})` : 'Routes Traefik vers ici'}</h2><ul class="ports">${routes
+    blocs.push(`<section><h2>${estTraefik ? t('routesServies', { n: routes.length }) : t('routesVersIci')}</h2><ul class="ports">${routes
       .map((r) =>
         r.cibles
           .map((c) => {
             const cl = c.ouvert === true ? 'ouvert' : c.ouvert === false ? 'ferme' : '';
-            const vers = c.noeud ? nom(c.noeud) : 'inconnu';
+            const vers = c.noeud ? nom(c.noeud) : t('inconnu');
             return `<li><span class="etat ${cl}"></span><span>${echapper(r.domaines.join(', '))}</span><span class="ms">${echapper(estTraefik ? `→ ${vers}` : c.texte)}</span></li>`;
           })
           .join(''),
@@ -686,7 +693,7 @@ function dessinerFiche(id, { garderDefilement = false } = {}) {
       .join('')}</ul></section>`);
 
   if (n.liens?.length || lienDepot(n.depot))
-    blocs.push(`<section><h2>Ouvrir</h2><div class="liens-ext">${(n.liens ?? [])
+    blocs.push(`<section><h2>${t('ouvrir')}</h2><div class="liens-ext">${(n.liens ?? [])
       .map((l) => `<a href="${echapper(l.url)}" target="_blank" rel="noopener">${echapper(l.titre)}</a>`)
       .join('')}${lienDepot(n.depot)}</div></section>`);
 
@@ -698,26 +705,26 @@ function dessinerFiche(id, { garderDefilement = false } = {}) {
       const t = carte.typesLiens[l.type];
       return `<li><button type="button" data-aller="${echapper(autre)}"><span class="sens" style="color:${echapper(t?.couleur ?? '')}">${sens}</span><span class="qui">${echapper(nom(autre))}</span><span class="quoi">${echapper(l.label ?? t?.nom ?? '')}</span></button></li>`;
     };
-    blocs.push(`<section><h2>Relations</h2><ul class="relations">${[...sortants.map((l) => ligne(l, '→')), ...entrants.map((l) => ligne(l, '←'))].join('')}</ul></section>`);
+    blocs.push(`<section><h2>${t('relations')}</h2><ul class="relations">${[...sortants.map((l) => ligne(l, '→')), ...entrants.map((l) => ligne(l, '←'))].join('')}</ul></section>`);
   }
 
   const cmds = commandesDe(n);
   if (cmds.length)
-    blocs.push(`<section><h2>Y entrer${n.ssh ? '' : ' (depuis l’hôte)'}</h2>${cmds.map((c) => `<div class="commande"><code>${echapper(c)}</code>${boutonCopier(c)}</div>`).join('')}</section>`);
+    blocs.push(`<section><h2>${t('yEntrer')}${n.ssh ? '' : t('depuisHote')}</h2>${cmds.map((c) => `<div class="commande"><code>${echapper(c)}</code>${boutonCopier(c)}</div>`).join('')}</section>`);
 
   const dec = n.decouvert;
   if (dec?.services?.length || dec?.minecraft) {
     const mc = dec.minecraft;
     const mcTexte = mc
-      ? `<p class="mc">Minecraft ${echapper(mc.version ?? '')}${mc.joueurs !== null ? ` · ${mc.joueurs}/${mc.max} joueurs` : ''}${mc.mods ? ` · ${mc.mods} mods` : ''}${mc.motd ? `<br><span>${echapper(mc.motd)}</span>` : ''}</p>`
+      ? `<p class="mc">Minecraft ${echapper(mc.version ?? '')}${mc.joueurs !== null ? ` · ${t('joueurs', { n: mc.joueurs, max: mc.max })}` : ''}${mc.mods ? ` · ${t('mods', { n: mc.mods })}` : ''}${mc.motd ? `<br><span>${echapper(mc.motd)}</span>` : ''}</p>`
       : '';
-    blocs.push(`<section><h2>Découvert ${ilYa(dec.quand)}</h2>${dec.services.length ? `<p>${dec.services.map(echapper).join(' · ')}</p>` : ''}${mcTexte}</section>`);
+    blocs.push(`<section><h2>${t('decouvertIlYa', { quand: ilYa(dec.quand) })}</h2>${dec.services.length ? `<p>${dec.services.map(echapper).join(' · ')}</p>` : ''}${mcTexte}</section>`);
   }
 
   if (n.auto && n.vmid)
-    blocs.push(`<section><h2>Décrire dans le catalogue</h2><p class="aide">À ajouter sous <code>noeuds:</code> dans ${echapper(etat.carte.reglages?.catalogue ?? 'le catalogue')}, puis à compléter.</p><div class="commande yaml"><pre>${echapper(yamlPour(n))}</pre>${boutonCopier(yamlPour(n))}</div></section>`);
+    blocs.push(`<section><h2>${t('decrire')}</h2><p class="aide">${t('decrireAide', { chemin: echapper(etat.carte.reglages?.catalogue ?? t('leCatalogue')) })}</p><div class="commande yaml"><pre>${echapper(yamlPour(n))}</pre>${boutonCopier(yamlPour(n))}</div></section>`);
 
-  if (n.notes?.length) blocs.push(`<section><h2>Notes</h2><ul class="notes">${n.notes.map((t) => `<li>${echapper(t)}</li>`).join('')}</ul></section>`);
+  if (n.notes?.length) blocs.push(`<section><h2>${t('notes')}</h2><ul class="notes">${n.notes.map((t) => `<li>${echapper(t)}</li>`).join('')}</ul></section>`);
 
   const fiche = $('#fiche');
   const defilement = fiche.scrollTop;
@@ -734,11 +741,11 @@ $('#fiche').addEventListener('click', async (ev) => {
   if (copier) {
     try {
       await navigator.clipboard.writeText(copier.dataset.copier);
-      copier.textContent = 'copié';
+      copier.textContent = t('copie');
     } catch {
-      copier.textContent = 'impossible';
+      copier.textContent = t('impossible');
     }
-    setTimeout(() => (copier.textContent = 'copier'), 1200);
+    setTimeout(() => (copier.textContent = t('copier')), 1200);
   }
 });
 
@@ -788,6 +795,8 @@ document.addEventListener('keydown', (ev) => {
 });
 
 // ── C'est parti ─────────────────────────────────────────────────
+traduirePage();
+$('#langue').addEventListener('click', basculerLangue);
 charger();
 setInterval(() => {
   if (!document.hidden) charger();

@@ -7,6 +7,7 @@ import { clientPve } from './pve.mjs';
 import { routesTraefik } from './traefik.mjs';
 import { sonderTcp, parLots } from './sonde.mjs';
 import { analyserIp, resumer, premiereLigne, GROUPES_DEFAUT, TYPES_LIENS_DEFAUT } from './decouverte.mjs';
+import { anomalie, texte, traduireCarte } from './i18n.mjs';
 
 const GROUPES_AJOUTES = [
   { id: 'hote', nom: 'Hôte Proxmox', couleur: '#cfd8e3' },
@@ -42,7 +43,7 @@ export function creerEtat(config, journal = console) {
     routes: [],
     traefikApi: config.traefik || null,
     sondes: new Map(), // "ip:port" → { ouvert, ms, depuis }
-    erreurs: { pve: pve ? null : 'PVE_TOKEN absent : état du Proxmox indisponible', traefik: null },
+    erreurs: { pve: pve ? null : 'PVE_TOKEN absent', traefik: null },
     majPve: 0,
     majTraefik: 0,
     majDecouverte: 0,
@@ -231,10 +232,10 @@ export function creerEtat(config, journal = console) {
   }
 
   // ── La carte telle que le navigateur la reçoit ────────────────────
-  function carte() {
+  function carte(langue = 'fr') {
     const { cat, groupes, noeuds, liens } = construire();
     const anomalies = [];
-    const signaler = (niveau, titre, detail, noeud) => anomalies.push({ niveau, titre, detail, noeud });
+    const signaler = (niveau, cle, params, noeud) => anomalies.push({ niveau, ...anomalie(langue, cle, params), noeud });
 
     // Les sondes, posées sur les ports.
     for (const n of noeuds) {
@@ -249,20 +250,20 @@ export function creerEtat(config, journal = console) {
     for (const n of noeuds) {
       const inv = n.direct;
       if (n.disparu && pve && !etat.erreurs.pve && etat.majPve)
-        signaler('attention', `${n.nom} n’existe plus`, `Le catalogue cite le ${n.vmid}, que le Proxmox ne connaît pas.`, n.id);
+        signaler('attention', 'disparu', { nom: n.nom, vmid: n.vmid }, n.id);
       // Un invité éteint n'est une anomalie que s'il doit tourner : décrit au catalogue ou en démarrage auto.
       if (n.vmid && inv && inv.statut !== 'running' && (!n.auto || n.onboot))
-        signaler('alerte', `${n.nom} est arrêté`, `${inv.type} ${inv.vmid} : ${inv.statut}${n.onboot ? ', alors qu’il démarre avec l’hôte' : ''}.`, n.id);
+        signaler('alerte', 'arrete', { nom: n.nom, type: inv.type, vmid: inv.vmid, statut: inv.statut, onboot: n.onboot }, n.id);
       if (!inv || inv.statut === 'running')
         for (const s of n.sondes)
-          if (s.ouvert === false) signaler('alerte', `${n.nom} : port ${s.port} fermé`, `${s.nom ?? ''} sur ${n.ip}:${s.port} ne répond plus.`, n.id);
+          if (s.ouvert === false) signaler('alerte', 'portFerme', { nom: n.nom, port: s.port, service: s.nom ?? '', ip: n.ip }, n.id);
       if (inv?.disqueMax && (inv.type === 'CT' || n.type === 'hôte') && inv.disque) {
         const r = inv.disque / inv.disqueMax;
-        if (r >= 0.9) signaler('alerte', `${n.nom} : disque plein à ${Math.round(r * 100)} %`, 'Moins de 10 % d’espace libre.', n.id);
-        else if (r >= 0.75) signaler('attention', `${n.nom} : disque à ${Math.round(r * 100)} %`, 'À surveiller.', n.id);
+        if (r >= 0.9) signaler('alerte', 'disquePlein', { nom: n.nom, pc: Math.round(r * 100) }, n.id);
+        else if (r >= 0.75) signaler('attention', 'disque', { nom: n.nom, pc: Math.round(r * 100) }, n.id);
       }
       if (inv?.type === 'CT' && inv.statut === 'running' && inv.memoireMax && inv.memoire / inv.memoireMax >= 0.9)
-        signaler('attention', `${n.nom} : mémoire à ${Math.round((inv.memoire / inv.memoireMax) * 100)} %`, 'Le conteneur est près de sa limite.', n.id);
+        signaler('attention', 'memoire', { nom: n.nom, pc: Math.round((inv.memoire / inv.memoireMax) * 100) }, n.id);
     }
 
     // Les routes du proxy : un lien vers la machine qui porte la cible, sinon une route orpheline.
@@ -292,7 +293,7 @@ export function creerEtat(config, journal = console) {
     }
     for (const r of routes) {
       if (!r.cibles.length) {
-        signaler('attention', `Route ${r.nom} sans cible`, `${r.domaines.join(', ')} : le service ${r.serviceManquant ? 'n’existe pas' : 'n’a aucun serveur'}.`, proxyId);
+        signaler('attention', 'routeSansCible', { route: r.nom, domaines: r.domaines.join(', '), manquant: r.serviceManquant }, proxyId);
         continue;
       }
       for (const c of r.cibles) {
@@ -303,34 +304,30 @@ export function creerEtat(config, journal = console) {
             id,
             nom: r.domaines[0] ?? r.nom,
             groupe: 'orphelin',
-            role: 'Route vers une machine inconnue',
-            description: `Le proxy envoie ${r.domaines.join(', ')} vers ${c.texte}, une adresse qu’aucune machine connue n’occupe${c.ouvert === false ? ' et qui ne répond pas' : ''}.`,
+            role: texte(langue, 'orphelinRole'),
+            description: texte(langue, 'orphelinDescription', { domaines: r.domaines.join(', '), cible: c.texte, muette: c.ouvert === false }),
             ip: c.ip,
             type: 'route',
             direct: null,
             sondes: [{ port: c.port, nom: r.nom, ouvert: c.ouvert, ms: c.ms }],
-            notes: [`Route Traefik « ${r.nom} » (règle ${r.regle}).`],
+            notes: [texte(langue, 'orphelinNote', { route: r.nom, regle: r.regle })],
           });
           if (proxyId) liens.push({ id: `r-${id}`, de: proxyId, vers: id, type: 'route', label: r.domaines.join(', '), orphelin: true });
         }
-        signaler(
-          c.ouvert === false ? 'alerte' : 'attention',
-          `Route orpheline : ${r.domaines.join(', ')}`,
-          `Vers ${c.texte}${c.ouvert === false ? ', qui ne répond pas' : ''}. À retirer du proxy ou à décrire au catalogue.`,
-          id,
-        );
+        signaler(c.ouvert === false ? 'alerte' : 'attention', 'routeOrpheline', { domaines: r.domaines.join(', '), cible: c.texte, muette: c.ouvert === false }, id);
       }
     }
 
-    if (etat.erreurs.pve) signaler('alerte', 'Proxmox injoignable', etat.erreurs.pve);
-    if (etat.erreurs.traefik) signaler('attention', 'API Traefik injoignable', etat.erreurs.traefik);
-    if (etat.catalogueErreur) signaler('alerte', 'Catalogue illisible', etat.catalogueErreur);
+    if (etat.erreurs.pve) signaler('alerte', 'pveInjoignable', { erreur: etat.erreurs.pve });
+    if (etat.erreurs.traefik) signaler('attention', 'traefikInjoignable', { erreur: etat.erreurs.traefik });
+    if (etat.catalogueErreur) signaler('alerte', 'catalogueIllisible', { erreur: etat.catalogueErreur });
 
     const ordre = { alerte: 0, attention: 1, info: 2 };
     anomalies.sort((a, b) => ordre[a.niveau] - ordre[b.niveau]);
 
-    return {
+    return traduireCarte(langue, {
       genere: Date.now(),
+      langue,
       majPve: etat.majPve,
       majTraefik: etat.majTraefik,
       majDecouverte: etat.majDecouverte,
@@ -342,7 +339,7 @@ export function creerEtat(config, journal = console) {
       liens: liens.filter((l) => noeuds.some((n) => n.id === l.de) && noeuds.some((n) => n.id === l.vers)),
       routes,
       anomalies,
-    };
+    });
   }
 
   function demarrer() {

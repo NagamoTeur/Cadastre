@@ -2,6 +2,9 @@
 
 *[English](README.md)*
 
+L'interface parle français et anglais : elle suit la langue du navigateur, et le bouton
+en haut à droite la change.
+
 La carte des services d'un Proxmox VE : à quoi sert chaque machine, par où on y entre,
 qui parle à qui, et ce qui cloche. Elle se dessine seule, puis on la complète.
 
@@ -20,7 +23,8 @@ dernière release. La carte est ensuite sur `http://<ip du conteneur>:8793/`.
 Réglages possibles, en variables devant la commande : `CTID=140`, `CT_NOM=cadastre`,
 `STOCKAGE=local-lvm`, `PONT=vmbr0`, `IP=192.168.1.50/24 PASSERELLE=192.168.1.1` (DHCP par
 défaut), `SOURCE=` (archive locale ou URL), `DEPOT=` (dépôt GitHub ou Gitea des releases, par
-défaut `https://github.com/NagamoTeur/Cadastre`).
+défaut `https://github.com/NagamoTeur/Cadastre`). Les noms anglais (`CT_NAME`, `STORAGE`,
+`BRIDGE`, `GATEWAY`, `REPO`, `--update`) marchent aussi.
 
 Mettre à jour une installation :
 

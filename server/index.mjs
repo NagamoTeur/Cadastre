@@ -5,6 +5,7 @@ import { readFile, writeFile, mkdir, rename } from 'node:fs/promises';
 import { join, extname, normalize } from 'node:path';
 import { config } from './config.mjs';
 import { creerEtat } from './etat.mjs';
+import { langueDe } from './i18n.mjs';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -63,7 +64,8 @@ const serveur = createServer(async (req, res) => {
   const url = new URL(req.url, 'http://cadastre');
   try {
     if (url.pathname === '/api/carte' && req.method === 'GET') {
-      return json(res, 200, { ...etat.carte(), ...(await lirePositions()) });
+      const langue = langueDe(url.searchParams.get('lang') ?? req.headers['accept-language']);
+      return json(res, 200, { ...etat.carte(langue), ...(await lirePositions()) });
     }
     if (url.pathname === '/api/positions' && req.method === 'PUT') {
       const corps = JSON.parse(await lireCorps(req));

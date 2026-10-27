@@ -6,7 +6,8 @@ A self-drawing map of the services running on a Proxmox VE host: what each machi
 how you reach it, what talks to what, and what is wrong. It discovers everything on its own;
 you can then add what no scan can guess.
 
-> The web interface is in French for now. Translations are welcome.
+The interface speaks English and French: it follows your browser's language, and the
+button in the top-right corner switches it.
 
 ## Install
 
@@ -20,15 +21,15 @@ The script creates an unprivileged Debian 13 container (1 core, 512 MB, 4 GB), a
 `cadastre@pve` with a **read-only** API token (PVEAuditor role, one token per install), and
 installs the latest release. The map is then at `http://<container ip>:8793/`.
 
-Options, as environment variables in front of the command: `CTID=140`, `CT_NOM=cadastre`
-(hostname), `STOCKAGE=local-lvm` (storage), `PONT=vmbr0` (bridge),
-`IP=192.168.1.50/24 PASSERELLE=192.168.1.1` (DHCP by default), `SOURCE=` (local archive or
-URL), `DEPOT=` (GitHub or Gitea repository to take releases from).
+Options, as environment variables in front of the command: `CTID=140`, `CT_NAME=cadastre`
+(hostname), `STORAGE=local-lvm`, `BRIDGE=vmbr0`, `IP=192.168.1.50/24 GATEWAY=192.168.1.1`
+(DHCP by default), `SOURCE=` (local archive or URL), `REPO=` (GitHub or Gitea repository to
+take releases from).
 
 Update an existing install:
 
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/NagamoTeur/Cadastre/main/deploy/installer-proxmox.sh)" -- --mise-a-jour <CTID>
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/NagamoTeur/Cadastre/main/deploy/installer-proxmox.sh)" -- --update <CTID>
 ```
 
 ## What you get
@@ -48,7 +49,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/NagamoTeur/Cadastre/main
 
 ## Auto-discovery
 
-Every 10 minutes (or with the « Relancer la découverte » button), for each running guest
+Every 10 minutes (or with the « Run discovery now » button), for each running guest
 and each host:
 
 1. **Proxmox** gives the guests, their IPs, tags and **notes** (the « Notes » tab becomes

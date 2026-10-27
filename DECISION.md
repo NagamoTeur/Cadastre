@@ -106,8 +106,15 @@ Sur GitHub, tests et releases tournent sur les runners de GitHub : un runner aut
 sur un dépôt public exécuterait le code de n'importe quelle PR sur la forge. GitHub ignore
 `.gitea/workflows/`, et Gitea ignore `.github/workflows/` dès que `.gitea/workflows/` existe.
 
-## D15 : README en anglais, interface en français
+## D15 : README en anglais, interface en français et en anglais (v0.3)
 
-Le README public est en anglais (`README.fr.md` garde la version française). L'interface
-reste en français pour l'instant ; la traduire demande de sortir tous les textes de
-`public/app.js` et `server/`.
+Le README public est en anglais (`README.fr.md` garde la version française).
+L'interface suit la langue du navigateur (français, sinon anglais), un bouton la change et
+le choix est gardé dans le navigateur. La page a son dictionnaire (`public/i18n.js`) ; le
+serveur reçoit `?lang=` et traduit à la sortie (`server/i18n.mjs`) : modèles pour les
+anomalies, table pour les phrases fixes (quartiers, rôles des empreintes, types de liens),
+appliquée à une copie de la carte pour ne jamais toucher aux valeurs partagées. Le code
+reste en français. Ce que l'utilisateur écrit (catalogue, notes Proxmox) n'est pas traduit.
+L'installateur suit `$LANG` et accepte les noms anglais de ses réglages.
+Rejeté : une bibliothèque d'i18n (une dépendance pour deux langues et une centaine de
+chaînes) ; traduire côté page les textes du serveur (il faudrait renvoyer des clés partout).

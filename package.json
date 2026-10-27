@@ -1,6 +1,6 @@
 {
   "name": "cadastre",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "private": true,
   "description": "A self-drawing map of the services on a Proxmox VE host: roles, links, live state, anomalies.",
   "type": "module",
